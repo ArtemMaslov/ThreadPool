@@ -1,0 +1,13 @@
+{
+	"folders": [
+		{
+			"name": "ThreadPool",
+			"path": "ThreadPool"
+		}
+		{
+			"name": "Settings",
+			"path": "."
+		}
+	],
+	"settings": {}
+}

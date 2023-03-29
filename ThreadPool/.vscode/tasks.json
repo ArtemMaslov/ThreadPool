@@ -1,0 +1,16 @@
+{
+    "tasks": [
+        {
+            "label":   "Build",
+            "type":    "shell",
+            "command": "make",
+            "group": 
+            {
+                "kind":      "build",
+                "isDefault": true
+            },
+            "detail": "Сборка основной программы."
+        },
+    ],
+    "version": "2.0.0"
+}
