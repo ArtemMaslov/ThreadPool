@@ -9,11 +9,13 @@
 
 #include "ThreadPool.h"
 
+using ThreadPoolModule::ThreadPool;
+
 ///***///***///---\\\***\\\***\\\___///***___***\\\___///***///***///---\\\***\\\***///
 ///***///***///---\\\***\\\***\\\___///***___***\\\___///***///***///---\\\***\\\***///
 
 template <size_t ParallelTasksCount, typename Funct>
-static double ParallelIntegrate(Funct funct, ThreadPool::ThreadPool<4>& threadPool,
+static double ParallelIntegrate(Funct funct, ThreadPool& threadPool,
                                 const double x_min, const double x_max);
 
 static double Integrate(const double min_x, const double max_x);
@@ -28,7 +30,7 @@ int main()
 {
     const int doublePrecision = std::numeric_limits<double>::max_digits10;
 
-    ThreadPool::ThreadPool<4> threadPool;
+    ThreadPool threadPool(4);
 
     double parallelSum = 0;
     parallelSum += ParallelIntegrate<8>(Integrate, threadPool, -120, -40);
@@ -87,17 +89,17 @@ int main()
 ///***///***///---\\\***\\\***\\\___///***___***\\\___///***///***///---\\\***\\\***///
 
 template <size_t ParallelTasksCount, typename Funct>
-static double ParallelIntegrate(Funct funct, ThreadPool::ThreadPool<4>& threadPool,
+static double ParallelIntegrate(Funct funct, ThreadPool& threadPool,
                                 const double x_min, const double x_max)
 {
     const double x_step = (x_max - x_min) / ParallelTasksCount;
 
-    std::array<ThreadPool::TaskId, ParallelTasksCount> tasksIds = {};
+    std::array<ThreadPoolModule::TaskId, ParallelTasksCount> tasksIds = {};
 
     double x = x_min;
     for (auto& taskId: tasksIds)
     {
-        taskId = threadPool.AddTask(Integrate, x, x + x_step);
+        taskId = threadPool.AddTask(true, Integrate, x, x + x_step);
         x += x_step;
     }
 
