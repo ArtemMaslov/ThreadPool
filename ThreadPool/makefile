@@ -10,10 +10,12 @@ vpath %.o $(OBJ)
 
 srcs_module := ThreadPool.cpp
 src_test1   := Test1.cpp
-srcs        := $(srcs_module) $(src_test1)
+src_test2   := Test2.cpp
+srcs        := $(srcs_module) $(src_test1) $(src_test2)
 
 objs_module := $(srcs_module:.cpp=.o)
 obj_test1   := $(src_test1:.cpp=.o)
+obj_test2   := $(src_test2:.cpp=.o)
 
 dependencies    := $(addprefix $(DEPENDENCIES_DIR)/, $(srcs:.cpp=.d))
 objs_to_compile := $(srcs:.cpp=.o)
@@ -36,7 +38,6 @@ compile: $(objs_to_compile)
 ###############################################################################
 
 test1: dir_bin dir_obj
-	$(call msg_build, проекта)
 	$(call msg_compile, проекта)
 	$(call call_make, ./, compile)
 	$(call msg_compile_complete)
@@ -44,12 +45,24 @@ test1: dir_bin dir_obj
 	$(call msg_linking)
 
 	@$(COMP) -o $(TARGET_PATH) \
-		$(addprefix $(OBJ)/, $(objs_module) $(obj_test1)) $(LINK_FLAGS)
+		$(addprefix $(OBJ)/, $(objs_module) $(obj_test1)) $(LINK_FLAGS) \
+	
+	$(call msg_build_complete)
+
+test2: dir_bin dir_obj
+	$(call msg_compile, проекта)
+	$(call call_make, ./, compile)
+	$(call msg_compile_complete)
+
+	$(call msg_linking)
+
+	@$(COMP) -o $(TARGET_PATH) \
+		$(addprefix $(OBJ)/, $(objs_module) $(obj_test2)) $(LINK_FLAGS) \
 	
 	$(call msg_build_complete)
 
 ###############################################################################
 
-.PHONY: compile compile_root test1
+.PHONY: compile compile_root test1 test2
 
 .DEFAULT_GOAL = test1
