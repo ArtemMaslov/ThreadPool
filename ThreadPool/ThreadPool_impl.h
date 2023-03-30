@@ -51,7 +51,7 @@ namespace ThreadPoolModule
             TasksQueue.push_back(task);
 
             TasksCount++;
-            QueueUpdatedFlag = true;
+            NotifyThreadFlag = true;
             NotifyThread.notify_one();
         }
 

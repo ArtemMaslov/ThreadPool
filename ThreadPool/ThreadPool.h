@@ -74,6 +74,12 @@ namespace ThreadPoolModule
         */
         void Execute();
 
+        /**
+         * @brief Получить результат выполнения задачи.
+         * После этого объект ресурсы Task будут освобождены.
+         * 
+         * @return Результат выполнения задачи.
+         */
         RetType GetResult();
 
     private:
@@ -117,8 +123,6 @@ namespace ThreadPoolModule
 
         ~ThreadHandler();
 
-        void WaitThreadToExit() noexcept;
-
         void OnRunningThread();
 
     private:
@@ -139,15 +143,14 @@ namespace ThreadPoolModule
         TaskBase* const GetTaskForHandler();
 
     protected:
-        /// Если true, то ThreadPool завершает работу и необходимо завершить выполнение
-        /// всех потоков.
-        bool IsTerminating    = false;
+        /// Если true, то ThreadPool завершает работу и необходимо завершить выполнение всех потоков.
+        bool IsTerminating = false;
         /// В пустую очередь задач добавили задачу. Используется, чтобы избежать ложных пробуждений.
-        bool QueueUpdatedFlag = false;
-        /// Все задачи выполнены. Используется, чтобы избежать ложных пробуждений.
-        bool AllTasksDone     = false;
-        /// Ожидаемое задание выполнено. Используется, чтобы избежать ложных пробуждений.
-        bool OneTaskDone      = false;
+        bool NotifyThreadFlag = false;
+        /// Все задачи были выполнены. Используется, чтобы избежать ложных пробуждений.
+        bool NotifyAllTasksDoneFlag = false;
+        /// Ожидаемая задача была выполнена. Используется, чтобы избежать ложных пробуждений.
+        bool NotifyOneTaskDoneFlag = false;
         /// Если true, то ThreadPool ожидает окончания выполнения всех задач.
         bool IsWaitingAllDone = false;
         /// Уведомить ThreadHandler, что очередь задач пополнилась.
@@ -157,12 +160,12 @@ namespace ThreadPoolModule
         /// Уведомить ThreadPool, что задание, которое он ожидал выполнено.
         std::condition_variable NotifyOneTaskDone;
         /// Контроль над доступом к общим для всех потоков данным.
-        std::mutex              ThreadPoolBaseAccess;
+        std::mutex ThreadPoolBaseAccess;
 
         /// Количество добавленных в ThreadPool заданий.
         size_t TasksCount = 0;
         /// Количество выполненных заданий.
-        size_t DoneTasksCount  = 0;
+        size_t DoneTasksCount = 0;
 
         /// Выполненные или находящиеся в процессе выполнения задания.
         std::unordered_map<TaskId, TaskBase*> TasksInProgress;
@@ -189,8 +192,6 @@ namespace ThreadPoolModule
         void Wait(TaskId id);
 
         void WaitAll();
-
-        void PlanTasks();
 
     private:
         std::vector<ThreadHandler> Handlers;

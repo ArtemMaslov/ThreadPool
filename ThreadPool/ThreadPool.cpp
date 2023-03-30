@@ -69,11 +69,6 @@ TaskBase* const ThreadPoolBase::GetTaskForHandler()
 ///***///***///---\\\***\\\***\\\___///***___***\\\___///***///***///---\\\***\\\***///
 ///***///***///---\\\***\\\***\\\___///***___***\\\___///***///***///---\\\***\\\***///
 
-void ThreadHandler::WaitThreadToExit() noexcept
-{
-    Thread.join();
-}
-
 void ThreadHandler::OnRunningThread()
 {
     THREAD_POOL_PRINTF("Thread #%zd is running\n", Id);
@@ -84,16 +79,19 @@ void ThreadHandler::OnRunningThread()
         {
             std::unique_lock<std::mutex> lock(Holder.ThreadPoolBaseAccess);
             
-            while (Holder.TasksQueue.empty() && !Holder.QueueUpdatedFlag && !Holder.IsTerminating)
+            // Ожидаем появления задач в очереди или завершения работы ThreadPool.
+            while (Holder.TasksQueue.empty() && !Holder.NotifyThreadFlag && !Holder.IsTerminating)
                 Holder.NotifyThread.wait(lock);
             
             if (Holder.IsTerminating)
                 break;
 
+            // Получаем задачу для выполнения.
             taskToDo = Holder.GetTaskForHandler();
-            Holder.QueueUpdatedFlag = false;
+            Holder.NotifyThreadFlag = false;
         }
 
+        // Выполняем задачу.
         THREAD_POOL_PRINTF("Thread #%zd is starting task %zd\n", Id, taskToDo->Id);
         taskToDo->Execute();
         THREAD_POOL_PRINTF("Thread #%zd have done task %zd\n", Id, taskToDo->Id);
@@ -106,20 +104,22 @@ void ThreadHandler::OnRunningThread()
 
             if (Holder.IsWaitingAllDone && Holder.DoneTasksCount == Holder.TasksCount)
             {
+                // ThreadPool ожидает завершения всех задач, уведомляем его, что все задачи выполнены.
                 Holder.IsWaitingAllDone = false;
-                Holder.AllTasksDone = true;
+                Holder.NotifyAllTasksDoneFlag = true;
                 Holder.NotifyAllDone.notify_all();
             }
 
             if (!taskToDo->IsWaitable)
             {
-                // Результат задания никто не будет получать, освобождаем ресурсы.
+                // Результат задания никто не будет ожидать и получать, освобождаем ресурсы.
                 auto elemIter = Holder.TasksInProgress.erase(taskToDo->Id);
                 delete taskToDo;
             }
             else if (taskToDo->IsWaiting)
             {
-                Holder.OneTaskDone = true;
+                // Результат задания ожидает ThreadPool, уведомляем его, что задание готово.
+                Holder.NotifyOneTaskDoneFlag = true;
                 Holder.NotifyOneTaskDone.notify_all();
             }
         }
@@ -155,6 +155,7 @@ void ThreadPool::Wait(TaskId id)
     {
         std::unique_lock<std::mutex> lock(ThreadPoolBaseAccess);
 
+        // Пытаемся найти задачу среди выполненных или выполняемых.
         auto elemIter = TasksInProgress.find(id);
 
         if (elemIter != TasksInProgress.end())
@@ -169,12 +170,12 @@ void ThreadPool::Wait(TaskId id)
             THREAD_POOL_ASSERT("Attempt to wait for not waitable task",
                                task->IsWaitable == true);
             task->IsWaiting = true;
-            // Задание ещё выполняется, ожидаем его.
+            // Задание ещё выполняется, ожидаем его завершения.
         }
         else
         {
             TaskBase* task = nullptr;
-            // Задание не найдено среди выполняющихся, ищем его в очереди.
+            // Задание не найдено среди выполняющихся, ищем его в очереди на выполнение.
             for (TaskBase* elem: TasksQueue)
             {
                 if (elem->Id == id)
@@ -191,6 +192,7 @@ void ThreadPool::Wait(TaskId id)
             THREAD_POOL_ASSERT("Attempt to wait for not waitable task",
                                task->IsWaitable == true);
             task->IsWaiting = true;
+            // Ожидаем выполнения задания.
         }
     }
 
@@ -198,15 +200,16 @@ void ThreadPool::Wait(TaskId id)
     {
         std::unique_lock<std::mutex> lock(ThreadPoolBaseAccess);
 
-        while (!OneTaskDone)
+        while (!NotifyOneTaskDoneFlag)
             NotifyOneTaskDone.wait(lock);
-        OneTaskDone = false;
+        NotifyOneTaskDoneFlag = false;
 
         auto elemIter = TasksInProgress.find(id);
-        // Задание не найдено.
+        // Было выполнено не наше задание (его ожидал другой поток).
         if (elemIter == TasksInProgress.end())
             continue;
 
+        // Ожидаемое задание было выполнено, возвращаемся из функции Wait().
         if (elemIter->second->IsDone)
             break;
     }
@@ -216,14 +219,15 @@ void ThreadPool::WaitAll()
 {
     std::unique_lock<std::mutex> lock(ThreadPoolBaseAccess);
 
+    // Если все задачи были выполнены, то ожидание не требуется.
     if (TasksCount == DoneTasksCount)
         return;
 
     IsWaitingAllDone = true;
 
-    while (!AllTasksDone)
+    while (!NotifyAllTasksDoneFlag)
         NotifyAllDone.wait(lock);
-    AllTasksDone = false;
+    NotifyAllTasksDoneFlag = false;
 }
 
 ///***///***///---\\\***\\\***\\\___///***___***\\\___///***///***///---\\\***\\\***///
