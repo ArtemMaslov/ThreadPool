@@ -99,6 +99,9 @@ void ThreadHandler::OnRunningThread()
         {
             std::unique_lock<std::mutex> lock(Holder.ThreadPoolBaseAccess);
 
+            if (Holder.IsTerminating)
+                break;
+
             taskToDo->IsDone = true;
             Holder.DoneTasksCount++;
 
@@ -134,6 +137,7 @@ void ThreadHandler::OnRunningThread()
 ThreadPool::ThreadPool(const size_t threadsCount) :
     Handlers()
 {
+    IsTerminating = false;
     // В случае исключения созданные потоки будут корректно освобождены.
     Handlers.reserve(threadsCount);
     for (size_t st = 0; st < threadsCount; st++)
@@ -142,9 +146,26 @@ ThreadPool::ThreadPool(const size_t threadsCount) :
 
 ThreadPool::~ThreadPool()
 {
+    std::unique_lock<std::mutex> lock(ThreadPoolBaseAccess);
+
     IsTerminating = true;
     NotifyThread.notify_all();
     // В ThreadHandler вызывается std::thread.join().
+
+    // Очищаем все задачи, так как пользователь не сможет получить к ним доступ.
+    for (std::pair<TaskId, TaskBase*> elem: TasksInProgress)
+    {
+        delete elem.second;
+    }
+    TasksInProgress.clear();
+
+    size_t queueCount = TasksQueue.size();
+    for (size_t st = 0; st < queueCount; st++)
+    {
+        TaskBase* const task = TasksQueue.back();
+        TasksQueue.pop_back();
+        delete task;
+    }
 }
 
 ///***///***///---\\\***\\\***\\\___///***___***\\\___///***///***///---\\\***\\\***///

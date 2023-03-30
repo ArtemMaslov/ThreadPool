@@ -144,7 +144,7 @@ namespace ThreadPoolModule
 
     protected:
         /// Если true, то ThreadPool завершает работу и необходимо завершить выполнение всех потоков.
-        bool IsTerminating = false;
+        std::atomic<bool> IsTerminating;
         /// В пустую очередь задач добавили задачу. Используется, чтобы избежать ложных пробуждений.
         bool NotifyThreadFlag = false;
         /// Все задачи были выполнены. Используется, чтобы избежать ложных пробуждений.

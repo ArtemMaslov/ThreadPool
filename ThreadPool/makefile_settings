@@ -9,13 +9,13 @@ COMP         := clang++
 FLAGS  := -std=c++17 -O0 -DDEBUG -Wall -Werror -Wno-unused-function \
           -Wno-unused-variable \
           -Wno-unused-but-set-variable
-AFLAGS := -fsanitize=address -fsanitize=undefined
+AFLAGS := -fsanitize=address -fsanitize=undefined -fstack-protector-strong -fstack-clash-protection -fPIE -fsanitize=bounds -fsanitize-undefined-trap-on-error
 
 INCLUDE_DIRS := -I./LibsIncludes -I./
 DEFINES       = -D$(TARGET_OS) -DGCC
 
-COMP_FLAGS = $(FLAGS) -c -g $(INCLUDE_DIRS) $(DEFINES)
-LINK_FLAGS = -std=c++17 -g
+COMP_FLAGS = $(FLAGS) -c -g $(INCLUDE_DIRS) $(DEFINES) $(AFLAGS)
+LINK_FLAGS = -std=c++17 -g $(AFLAGS)
 
 ###############################################################################
 

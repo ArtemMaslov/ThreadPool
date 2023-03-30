@@ -31,7 +31,7 @@ int main()
     {
         ThreadPoolModule::TaskId taskId = threadPool.AddTask(true, VoidTask);
         threadPool.Wait(taskId);
-        threadPool.GetTaskResult<void>(taskId);
+        //threadPool.GetTaskResult<void>(taskId);
     }
 
     ThreadPoolModule::TaskId longTaskId = threadPool.AddTask(true, LongTask);
@@ -40,6 +40,7 @@ int main()
         threadPool.AddTask(false, ShortTask);
 
     threadPool.Wait(longTaskId);
+    //threadPool.GetTaskResult<int>(longTaskId);
 
     printf("!!!!!!!!!!!LongTask have been waited!!!!!!!!!!!\n");
 
